@@ -9,54 +9,57 @@ const router = express.Router();
 // Advanced Nodes Search and Filtering
 router.get('/nodes/search', async (req, res) => {
   try {
-    const { 
-      type, 
-      minLatitude, 
-      maxLatitude, 
-      minLongitude, 
-      maxLongitude, 
-      minCapacity, 
-      maxCapacity, 
-      status,
-      name 
-    } = req.query;
+      const {
+          type,
+          minLatitude,
+          maxLatitude,
+          minLongitude,
+          maxLongitude,
+          minCapacity,
+          maxCapacity,
+          status,
+          name
+      } = req.query;
 
-    // Build dynamic query
-    const query = {};
+      // Build dynamic query
+      const query = {};
 
-    // Type filtering
-    if (type) query.type = type;
+      // Type filtering (updated to handle comma-separated types)
+      if (type) {
+          const typeList = type.split(','); // Split the query parameter into an array of types
+          query.type = { $in: typeList }; // Use $in to match any of the types in the list
+      }
 
-    // Location filtering
-    if (minLatitude || maxLatitude) {
-      query['location.latitude'] = {};
-      if (minLatitude) query['location.latitude'].$gte = parseFloat(minLatitude);
-      if (maxLatitude) query['location.latitude'].$lte = parseFloat(maxLatitude);
-    }
+      // Location filtering
+      if (minLatitude || maxLatitude) {
+          query['location.latitude'] = {};
+          if (minLatitude) query['location.latitude'].$gte = parseFloat(minLatitude);
+          if (maxLatitude) query['location.latitude'].$lte = parseFloat(maxLatitude);
+      }
 
-    if (minLongitude || maxLongitude) {
-      query['location.longitude'] = {};
-      if (minLongitude) query['location.longitude'].$gte = parseFloat(minLongitude);
-      if (maxLongitude) query['location.longitude'].$lte = parseFloat(maxLongitude);
-    }
+      if (minLongitude || maxLongitude) {
+          query['location.longitude'] = {};
+          if (minLongitude) query['location.longitude'].$gte = parseFloat(minLongitude);
+          if (maxLongitude) query['location.longitude'].$lte = parseFloat(maxLongitude);
+      }
 
-    // Capacity filtering
-    if (minCapacity || maxCapacity) {
-      query.capacity = {};
-      if (minCapacity) query.capacity.$gte = parseFloat(minCapacity);
-      if (maxCapacity) query.capacity.$lte = parseFloat(maxCapacity);
-    }
+      // Capacity filtering
+      if (minCapacity || maxCapacity) {
+          query.capacity = {};
+          if (minCapacity) query.capacity.$gte = parseFloat(minCapacity);
+          if (maxCapacity) query.capacity.$lte = parseFloat(maxCapacity);
+      }
 
-    // Status filtering
-    if (status) query.status = status;
+      // Status filtering
+      if (status) query.status = status;
 
-    // Name partial match (case-insensitive)
-    if (name) query.name = { $regex: name, $options: 'i' };
+      // Name partial match (case-insensitive)
+      if (name) query.name = { $regex: name, $options: 'i' };
 
-    const nodes = await Node.find(query);
-    res.json(nodes);
+      const nodes = await Node.find(query);
+      res.json(nodes);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+      res.status(500).json({ error: err.message });
   }
 });
 
