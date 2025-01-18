@@ -4,6 +4,7 @@ const Pipe = require('../models/Pipe');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const mongoose = require('mongoose');
 
+
 const router = express.Router();
 
 // Advanced Nodes Search and Filtering
@@ -65,68 +66,73 @@ router.get('/nodes/search', async (req, res) => {
 
 //Create a node (admin only)
 router.post('/node', [authMiddleware, adminMiddleware], async (req, res) => {
-    try {
+  try {
       // Validate Corfu Island bounds
       const { location } = req.body;
       if (
-        location.latitude < 38.5 || location.latitude > 39.8 ||
-        location.longitude < 19.3 || location.longitude > 20.3
+          location.latitude < 38.5 || location.latitude > 39.8 ||
+          location.longitude < 19.3 || location.longitude > 20.3
       ) {
-        return res.status(400).json({ message: 'Node location must be within Corfu Island bounds' });
+          return res.status(400).json({ message: 'Node location must be within Corfu Island bounds' });
       }
-  
-      
+
+      // Set default status if empty or missing
+      if (!req.body.status || req.body.status.trim() === "") {
+          req.body.status = "active"; // Or your preferred default status
+      }
+
       const newNode = await Node.create(req.body);
-      
+
       res.status(201).json(newNode);
-    } catch (err) {
+  } catch (err) {
       console.error('Node Creation Error:', err);
-      res.status(500).json({ 
-        message: 'Error creating node', 
-        error: err.message 
+
+      // Improve error handling: Check for validation errors
+      if (err.name === 'ValidationError') {
+          return res.status(400).json({
+              message: 'Node validation failed',
+              error: err.message
+          });
+      }
+
+      res.status(500).json({
+          message: 'Error creating node',
+          error: err.message
       });
-    }
-  });
+  }
+});
 
 
 // Update a node (admin only)
 router.put('/node/:id', [authMiddleware, adminMiddleware], async (req, res) => {
   try {
-    const { id } = req.params;
-    const { name, type, location, capacity, status, description } = req.body;
+      const { id } = req.params;
+      const updateData = req.body;
 
-    // Validate Corfu Island bounds if location is provided
-    if (location) {
-      if (
-        location.latitude < 38.5 || location.latitude > 39.8 ||
-        location.longitude < 19.3 || location.longitude > 20.3
-      ) {
-        return res.status(400).json({ message: 'Node location must be within Corfu Island bounds' });
+      // Validate Corfu Island bounds if location is provided
+      if (updateData.location) {
+          if (
+              updateData.location.latitude < 38.5 || updateData.location.latitude > 39.8 ||
+              updateData.location.longitude < 19.3 || updateData.location.longitude > 20.3
+          ) {
+              return res.status(400).json({ message: 'Node location must be within Corfu Island bounds' });
+          }
       }
-    }
 
-    const updateData = { 
-      ...(name && { name }),
-      ...(type && { type }),
-      ...(location && { location }),
-      ...(capacity !== undefined && { capacity }),
-      ...(status && { status }),
-      ...(description && { description })
-    };
+      const updatedNode = await Node.findByIdAndUpdate(
+          id,
+          updateData,
+          { new: true, runValidators: true }
+      );
 
-    const updatedNode = await Node.findByIdAndUpdate(
-      id, 
-      updateData, 
-      { new: true, runValidators: true }
-    );
+      if (!updatedNode) {
+          return res.status(404).json({ message: 'Node not found' });
+      }
 
-    if (!updatedNode) {
-      return res.status(404).json({ message: 'Node not found' });
-    }
-
-    res.json(updatedNode);
+      res.json(updatedNode);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+      console.error("Error updating node:", err);
+      res.status(500).json({ error: err.message });
   }
 });
 
