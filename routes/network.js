@@ -64,7 +64,6 @@ router.get('/nodes/search', async (req, res) => {
   }
 });
 
-//Create a node (admin only)
 router.post('/node', [authMiddleware, adminMiddleware], async (req, res) => {
   try {
       // Validate Corfu Island bounds
@@ -81,13 +80,12 @@ router.post('/node', [authMiddleware, adminMiddleware], async (req, res) => {
           req.body.status = "active"; // Or your preferred default status
       }
 
-      const newNode = await Node.create(req.body);
+      const newNode = await Node.create(req.body); // Let MongoDB generate the _id
 
       res.status(201).json(newNode);
   } catch (err) {
       console.error('Node Creation Error:', err);
 
-      // Improve error handling: Check for validation errors
       if (err.name === 'ValidationError') {
           return res.status(400).json({
               message: 'Node validation failed',
@@ -102,8 +100,7 @@ router.post('/node', [authMiddleware, adminMiddleware], async (req, res) => {
   }
 });
 
-
-// Update a node (admin only)
+// Update a node (admin only) - using _id
 router.put('/node/:id', [authMiddleware, adminMiddleware], async (req, res) => {
   try {
       const { id } = req.params;
@@ -119,6 +116,7 @@ router.put('/node/:id', [authMiddleware, adminMiddleware], async (req, res) => {
           }
       }
 
+      // Use findByIdAndUpdate with the provided _id
       const updatedNode = await Node.findByIdAndUpdate(
           id,
           updateData,
@@ -139,33 +137,34 @@ router.put('/node/:id', [authMiddleware, adminMiddleware], async (req, res) => {
 // Delete a node (admin only)
 router.delete('/node/:id', [authMiddleware, adminMiddleware], async (req, res) => {
   try {
-    const { id } = req.params;
+      const { id } = req.params;
 
-    // Check if node exists
-    const node = await Node.findById(id);
-    if (!node) {
-      return res.status(404).json({ message: 'Node not found' });
-    }
+      // Check if node exists
+      const node = await Node.findById(id);
+      if (!node) {
+          return res.status(404).json({ message: 'Node not found' });
+      }
 
-    // Check if node is connected to any pipes
-    const connectedPipes = await Pipe.find({
-      $or: [
-        { startNode: id },
-        { endNode: id }
-      ]
-    });
-
-    if (connectedPipes.length > 0) {
-      return res.status(400).json({ 
-        message: 'Cannot delete node. It is connected to existing pipes.',
-        connectedPipes: connectedPipes.map(pipe => pipe._id)
+      // Check if node is connected to any pipes
+      const connectedPipes = await Pipe.find({
+          $or: [
+              { startNode: id },
+              { endNode: id }
+          ]
       });
-    }
 
-    await Node.findByIdAndDelete(id);
-    res.json({ message: 'Node deleted successfully' });
+      if (connectedPipes.length > 0) {
+          return res.status(400).json({ 
+              message: 'Cannot delete node. It is connected to existing pipes.',
+              connectedPipes: connectedPipes.map(pipe => pipe._id)
+          });
+      }
+
+      await Node.findByIdAndDelete(id);
+      res.json({ message: 'Node deleted successfully' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+      console.error("Error deleting node:", err); // Log the error for debugging
+      res.status(500).json({ error: err.message });
   }
 });
 

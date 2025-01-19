@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
 
 const NodeSchema = new mongoose.Schema({
-    name: { type: String, required: true },
+    name: { type: String, required: true }, // 'name' is not unique
     type: {
         type: String,
         required: true,
-        enum: ['Κλειδί', 'Πυροσβεστικός Κρουνός', 'Ταφ', 'Γωνία', 'Κολεκτέρ', 'Παροχή'] // Greek types
+        enum: ['source', 'junction', 'outlet', 'reservoir', 'Κλειδί', 'Πυροσβεστικός Κρουνός', 'Ταφ', 'Γωνία', 'Κολεκτέρ', 'Παροχή']
     },
     location: {
         latitude: {
@@ -44,9 +44,12 @@ const NodeSchema = new mongoose.Schema({
     }
 });
 
-// Pre-save middleware to update timestamp
-NodeSchema.pre('save', function (next) {
+// Pre-save middleware to update timestamp and generate _id if not provided
+NodeSchema.pre('save', function(next) {
     this.updatedAt = Date.now();
+    if (!this._id) {
+        this._id = new mongoose.Types.ObjectId(); // Generate ObjectId
+    }
     next();
 });
 
