@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User'); // Import the User model
+require('dotenv').config({ path: '../.env' });
 
 // In-memory store for revoked refresh tokens (replace with database in production)
 const revokedRefreshTokens = new Set();
@@ -107,4 +108,11 @@ const logoutUser = (req, res) => {
     res.status(200).json({ message: 'Logged out successfully' });
 };
 
-module.exports = { authMiddleware, adminMiddleware, generateAccessToken, generateRefreshToken, tokenRefresh, logoutUser };
+module.exports = { 
+    authMiddleware, 
+    adminMiddleware, 
+    generateAccessToken, 
+    generateRefreshToken, 
+    tokenRefresh, 
+    logoutUser 
+};
