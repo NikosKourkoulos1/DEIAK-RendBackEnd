@@ -47,7 +47,7 @@ router.post('/login', async (req, res) => {
       const refreshToken = generateRefreshToken(user);
 
       // Send the tokens in the response
-      res.status(200).json({role: user.role });
+      res.status(200).json({ accessToken, refreshToken, role: user.role });
   } catch (err) {
       console.error("Login error:", err);
       res.status(500).json({ error: err.message });
