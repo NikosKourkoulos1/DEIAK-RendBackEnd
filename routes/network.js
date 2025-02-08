@@ -168,152 +168,150 @@ router.delete('/node/:id', [authMiddleware, adminMiddleware], async (req, res) =
   }
 });
 
+
+router.get('/pipes', async (req, res) => {
+  try {
+      const pipes = await Pipe.find({}); // No more population needed
+      res.json(pipes);
+  } catch (err) {
+      res.status(500).json({ error: err.message });
+  }
+});
+
 //Pipe Search and Filtering
 router.get('/pipes/search', async (req, res) => {
-  try {
-    const { 
-      status, 
-      minFlow, 
-      maxFlow, 
-      startNodeType, 
-      endNodeType,
+try {
+  const {
+      status,
+      minFlow,
+      maxFlow,
       minLength,
       maxLength
-    } = req.query;
+  } = req.query;
+  const query = {};
 
-    
-    const query = {};
+  // Status filter
+  if (status) query.status = status;
 
-    // Status filter
-    if (status) query.status = status;
-
-    // Flow filter
-    if (minFlow || maxFlow) {
+  // Flow filter
+  if (minFlow || maxFlow) {
       query.flow = {};
       if (minFlow) query.flow.$gte = parseFloat(minFlow);
       if (maxFlow) query.flow.$lte = parseFloat(maxFlow);
-    }
+  }
 
-    // Length filtering
-    if (minLength || maxLength) {
+  // Length filtering
+  if (minLength || maxLength) {
       query.length = {};
       if (minLength) query.length.$gte = parseFloat(minLength);
       if (maxLength) query.length.$lte = parseFloat(maxLength);
-    }
-
-    // Pipes with start or end nodes of specific types
-    const nodeTypeQuery = {};
-    if (startNodeType) nodeTypeQuery.type = startNodeType;
-    
-    const pipes = await Pipe.find(query)
-      .populate({
-        path: 'startNode',
-        match: startNodeType ? nodeTypeQuery : {}
-      })
-      .populate({
-        path: 'endNode',
-        match: endNodeType ? { type: endNodeType } : {}
-      });
-
-    // Filter out pipes where start or end node doesn't match type
-    const filteredPipes = pipes.filter(pipe => 
-      (startNodeType ? pipe.startNode : true) && 
-      (endNodeType ? pipe.endNode : true)
-    );
-
-    res.json(filteredPipes);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
+
+  const pipes = await Pipe.find(query)
+
+  res.json(pipes);
+} catch (err) {
+  res.status(500).json({ error: err.message });
+}
 });
 
 // Create Pipe (Admin Only)
 router.post('/pipe', [authMiddleware, adminMiddleware], async (req, res) => {
-    try {
-      const { startNode, endNode } = req.body;
-  
-     
-      const start = await Node.findById(startNode);
-      const end = await Node.findById(endNode);
-  
-      if (!start || !end) {
-        return res.status(404).json({ message: 'One or both nodes do not exist' });
+  try {
+      const { coordinates, status, flow, length, diameter, material } = req.body;
+
+      // --- VALIDATION ---
+      if (!coordinates || coordinates.length < 2) {
+          return res.status(400).json({ message: "At least two coordinates are required." });
       }
-  
-      
-      const newPipe = await Pipe.create(req.body);
-      
-      res.status(201).json(newPipe);
-    } catch (err) {
-      console.error('Pipe Creation Error:', err);
-      res.status(500).json({ 
-        message: 'Error creating pipe', 
-        error: err.message 
+      if (flow !== 0 && flow !== 1) { // Validate flow direction
+          return res.status(400).json({ message: "Invalid flow direction. Must be 0 or 1." });
+      }
+      // ... (any other validation you have) ...
+
+      const newPipe = new Pipe({
+          coordinates,
+          status,
+          flow, // Use the validated 'flow' value
+          length,
+          diameter,
+          material,
       });
-    }
-  });
+
+      const savedPipe = await newPipe.save();
+      res.status(201).json(savedPipe);
+
+  } catch (error) {
+      res.status(500).json({ message: error.message });
+  }
+});
+
+
 
 // Update a pipe (admin only)
 router.put('/pipe/:id', [authMiddleware, adminMiddleware], async (req, res) => {
   try {
-    const { id } = req.params;
-    const { startNode, endNode, status, flow, length, diameter, material } = req.body;
-
-    // If new nodes are provided, validate they exist
-    if (startNode) {
-      const start = await Node.findById(startNode);
-      if (!start) {
-        return res.status(404).json({ message: 'Start node not found' });
+      const { id } = req.params;
+      const { coordinates, status, flow, length, diameter, material } = req.body;
+       // --- VALIDATION ---
+      if (flow !== undefined && flow !== 0 && flow !== 1) { // Validate flow direction (allow undefined for partial updates)
+        return res.status(400).json({ message: "Invalid flow direction. Must be 0 or 1." });
       }
-    }
-
-    if (endNode) {
-      const end = await Node.findById(endNode);
-      if (!end) {
-        return res.status(404).json({ message: 'End node not found' });
+      if (coordinates && coordinates.length < 2) { //also added this so that coordinates are greater than 2
+          return res.status(400).json({ message: 'At least two coordinates are required.' });
       }
-    }
 
-    const updateData = { 
-      ...(startNode && { startNode }),
-      ...(endNode && { endNode }),
-      ...(status && { status }),
-      ...(flow !== undefined && { flow }),
-      ...(length !== undefined && { length }),
-      ...(diameter !== undefined && { diameter }),
-      ...(material && { material })
-    };
+      // You might want to add validation for other fields as well.
 
-    const updatedPipe = await Pipe.findByIdAndUpdate(
-      id, 
-      updateData, 
-      { new: true, runValidators: true }
-    );
+      const updateObject = { ...req.body }; // Start with all request body fields
+      delete updateObject._id; // IMPORTANT: Prevent updating the _id
 
-    if (!updatedPipe) {
-      return res.status(404).json({ message: 'Pipe not found' });
-    }
+      // Only update 'updatedAt' if we are actually updating
+      if(Object.keys(updateObject).length > 0){ // Check if there are any updates
+         updateObject.updatedAt = Date.now();
+      }
 
-    res.json(updatedPipe);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+
+      const updatedPipe = await Pipe.findByIdAndUpdate(
+          id,
+          updateObject, // Use the built object
+          { new: true, runValidators: true }
+      );
+
+      if (!updatedPipe) {
+          return res.status(404).json({ message: "Pipe not found" });
+      }
+
+      res.status(200).json(updatedPipe);
+  } catch (error) {
+      console.error("Error updating pipe:", error);
+      if (error.name === 'ValidationError') {
+          return res.status(400).json({message: error.message})
+      }
+      res.status(500).json({ error: error.message });
   }
 });
 
-// Delete a pipe (admin only)
+// Delete a pipe (admin only) - This one doesn't need much change
 router.delete('/pipe/:id', [authMiddleware, adminMiddleware], async (req, res) => {
   try {
-    const { id } = req.params;
+      const { id } = req.params;
 
-    const deletedPipe = await Pipe.findByIdAndDelete(id);
+      // Validate ID format
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+          return res.status(400).json({ message: 'Invalid pipe ID format' });
+      }
 
-    if (!deletedPipe) {
-      return res.status(404).json({ message: 'Pipe not found' });
-    }
+      const deletedPipe = await Pipe.findByIdAndDelete(id);
 
-    res.json({ message: 'Pipe deleted successfully', deletedPipe });
+      if (!deletedPipe) {
+          return res.status(404).json({ message: 'Pipe not found' });
+      }
+
+      res.json({ message: 'Pipe deleted successfully', deletedPipe });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+      console.error("Error deleting pipe:", err);
+      res.status(500).json({ error: err.message });
   }
 });
 
