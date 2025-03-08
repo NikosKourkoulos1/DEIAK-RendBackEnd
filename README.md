@@ -19,5 +19,5 @@ This is the backend for my CS50 final project, **Deiak Water Network**. It’s a
 ## Setup
 1. **Clone It**
    ```bash
-   git clone https://github.com/NikosKourkoulos1/DeiakWaterNetwork-Backend.git
+   git clone https://github.com/NikosKourkoulos1/DEIAK-RendBackEnd.git
    cd DeiakWaterNetwork-Backend
