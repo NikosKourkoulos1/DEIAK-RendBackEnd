@@ -1,14 +1,13 @@
 const mongoose = require('mongoose');
 
 const PipeSchema = new mongoose.Schema({
-  // startNode and endNode are removed
   coordinates: {
     type: [{
       latitude: { type: Number, required: true },
       longitude: { type: Number, required: true },
     }],
     required: true,
-    validate: { // Ensure at least two points
+    validate: { 
       validator: function(value) {
         return value.length >= 2;
       },
@@ -45,6 +44,7 @@ const PipeSchema = new mongoose.Schema({
     default: Date.now
   }
 });
+
 
 PipeSchema.pre('save', function(next) {
   this.updatedAt = Date.now();

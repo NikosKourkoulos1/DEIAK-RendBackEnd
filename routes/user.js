@@ -33,10 +33,8 @@ router.put('/:id', async (req, res) => {
     try {
       const { name, email, password } = req.body;
   
-      // Ensure role cannot be updated
       const updates = { name, email, password };
   
-      // Find and update the user by ID
       const updatedUser = await User.findByIdAndUpdate(
         req.params.id,
         updates,

@@ -1,8 +1,7 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User'); // Import the User model
+const User = require('../models/User'); 
 require('dotenv').config({ path: '../.env' });
 
-// In-memory store for revoked refresh tokens (replace with database in production)
 const revokedRefreshTokens = new Set();
 
 const authMiddleware = (req, res, next) => {
@@ -44,19 +43,17 @@ const generateAccessToken = (user) => {
     return jwt.sign(
         { id: user._id, role: user.role },
         process.env.JWT_SECRET,
-        { expiresIn: '1h' } // Access token expires in 1 hour
+        { expiresIn: '1h' } 
     );
 };
 
-// Function to generate refresh token
 const generateRefreshToken = (user) => {
     return jwt.sign(
         { id: user._id, role: user.role },
         process.env.REFRESH_TOKEN_SECRET,
-        { expiresIn: '7d' } // Refresh token expires in 7 days
+        { expiresIn: '7d' } 
     );
 };
-
 
 
 // Route to handle refresh token requests
@@ -67,7 +64,6 @@ const tokenRefresh = (req, res) => {
         return res.status(401).json({ message: 'Refresh token not provided' });
     }
 
-    // Check if the refresh token is revoked
     if (revokedRefreshTokens.has(refreshToken)) {
         return res.status(403).json({ message: 'Refresh token has been revoked' });
     }
@@ -75,17 +71,13 @@ const tokenRefresh = (req, res) => {
     try {
         const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
 
-        // Generate a new access token
         const accessToken = generateAccessToken({ _id: decoded.id, role: decoded.role });
 
-        // Optionally, generate a new refresh token here and send it back to the client
-        // For simplicity, we're reusing the existing refresh token in this example
 
         res.status(200).json({ accessToken });
     } catch (err) {
         console.error("Error refreshing token:", err);
         if (err.name === 'TokenExpiredError') {
-            // Add the expired refresh token to the revoked set
             revokedRefreshTokens.add(refreshToken);
             return res.status(403).json({ message: 'Refresh token expired' });
         } else {
@@ -102,7 +94,6 @@ const logoutUser = (req, res) => {
         return res.status(400).json({ message: 'Refresh token not provided' });
     }
 
-    // Add the refresh token to the revoked set
     revokedRefreshTokens.add(refreshToken);
 
     res.status(200).json({ message: 'Logged out successfully' });

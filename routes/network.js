@@ -22,13 +22,11 @@ router.get('/nodes/search', async (req, res) => {
           name
       } = req.query;
 
-      // Build dynamic query
       const query = {};
 
-      // Type filtering (updated to handle comma-separated types)
       if (type) {
-          const typeList = type.split(','); // Split the query parameter into an array of types
-          query.type = { $in: typeList }; // Use $in to match any of the types in the list
+          const typeList = type.split(','); 
+          query.type = { $in: typeList }; 
       }
 
       // Location filtering
@@ -77,10 +75,10 @@ router.post('/node', [authMiddleware, adminMiddleware], async (req, res) => {
 
       // Set default status if empty or missing
       if (!req.body.status || req.body.status.trim() === "") {
-          req.body.status = "active"; // Or your preferred default status
+          req.body.status = "active"; 
       }
 
-      const newNode = await Node.create(req.body); // Let MongoDB generate the _id
+      const newNode = await Node.create(req.body); 
 
       res.status(201).json(newNode);
   } catch (err) {
@@ -106,7 +104,6 @@ router.put('/node/:id', [authMiddleware, adminMiddleware], async (req, res) => {
       const { id } = req.params;
       const updateData = req.body;
 
-      // Validate Corfu Island bounds if location is provided
       if (updateData.location) {
           if (
               updateData.location.latitude < 38.5 || updateData.location.latitude > 39.8 ||
@@ -116,7 +113,6 @@ router.put('/node/:id', [authMiddleware, adminMiddleware], async (req, res) => {
           }
       }
 
-      // Use findByIdAndUpdate with the provided _id
       const updatedNode = await Node.findByIdAndUpdate(
           id,
           updateData,
@@ -139,13 +135,11 @@ router.delete('/node/:id', [authMiddleware, adminMiddleware], async (req, res) =
   try {
       const { id } = req.params;
 
-      // Check if node exists
       const node = await Node.findById(id);
       if (!node) {
           return res.status(404).json({ message: 'Node not found' });
       }
 
-      // Check if node is connected to any pipes
       const connectedPipes = await Pipe.find({
           $or: [
               { startNode: id },
@@ -163,7 +157,7 @@ router.delete('/node/:id', [authMiddleware, adminMiddleware], async (req, res) =
       await Node.findByIdAndDelete(id);
       res.json({ message: 'Node deleted successfully' });
   } catch (err) {
-      console.error("Error deleting node:", err); // Log the error for debugging
+      console.error("Error deleting node:", err); 
       res.status(500).json({ error: err.message });
   }
 });
@@ -171,7 +165,7 @@ router.delete('/node/:id', [authMiddleware, adminMiddleware], async (req, res) =
 
 router.get('/pipes', async (req, res) => {
   try {
-      const pipes = await Pipe.find({}); // No more population needed
+      const pipes = await Pipe.find({}); 
       res.json(pipes);
   } catch (err) {
       res.status(500).json({ error: err.message });
@@ -224,15 +218,14 @@ router.post('/pipe', [authMiddleware, adminMiddleware], async (req, res) => {
       if (!coordinates || coordinates.length < 2) {
           return res.status(400).json({ message: "At least two coordinates are required." });
       }
-      if (flow !== 0 && flow !== 1) { // Validate flow direction
+      if (flow !== 0 && flow !== 1) { 
           return res.status(400).json({ message: "Invalid flow direction. Must be 0 or 1." });
       }
-      // ... (any other validation you have) ...
 
       const newPipe = new Pipe({
           coordinates,
           status,
-          flow, // Use the validated 'flow' value
+          flow, 
           length,
           diameter,
           material,
@@ -254,27 +247,24 @@ router.put('/pipe/:id', [authMiddleware, adminMiddleware], async (req, res) => {
       const { id } = req.params;
       const { coordinates, status, flow, length, diameter, material } = req.body;
        // --- VALIDATION ---
-      if (flow !== undefined && flow !== 0 && flow !== 1) { // Validate flow direction (allow undefined for partial updates)
+      if (flow !== undefined && flow !== 0 && flow !== 1) { 
         return res.status(400).json({ message: "Invalid flow direction. Must be 0 or 1." });
       }
-      if (coordinates && coordinates.length < 2) { //also added this so that coordinates are greater than 2
+      if (coordinates && coordinates.length < 2) { 
           return res.status(400).json({ message: 'At least two coordinates are required.' });
       }
 
-      // You might want to add validation for other fields as well.
+      const updateObject = { ...req.body }; 
+      delete updateObject._id; 
 
-      const updateObject = { ...req.body }; // Start with all request body fields
-      delete updateObject._id; // IMPORTANT: Prevent updating the _id
-
-      // Only update 'updatedAt' if we are actually updating
-      if(Object.keys(updateObject).length > 0){ // Check if there are any updates
+      if(Object.keys(updateObject).length > 0){ 
          updateObject.updatedAt = Date.now();
       }
 
 
       const updatedPipe = await Pipe.findByIdAndUpdate(
           id,
-          updateObject, // Use the built object
+          updateObject, 
           { new: true, runValidators: true }
       );
 
@@ -292,12 +282,11 @@ router.put('/pipe/:id', [authMiddleware, adminMiddleware], async (req, res) => {
   }
 });
 
-// Delete a pipe (admin only) - This one doesn't need much change
+// Delete a pipe (admin only) 
 router.delete('/pipe/:id', [authMiddleware, adminMiddleware], async (req, res) => {
   try {
       const { id } = req.params;
 
-      // Validate ID format
       if (!mongoose.Types.ObjectId.isValid(id)) {
           return res.status(400).json({ message: 'Invalid pipe ID format' });
       }

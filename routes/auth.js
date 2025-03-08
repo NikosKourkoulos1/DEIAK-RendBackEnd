@@ -40,13 +40,9 @@ router.post('/login', async (req, res) => {
       console.log("Password match:", isMatch);
       if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-      // Generate access token
       const accessToken = generateAccessToken(user);
-
-      // Generate refresh token
       const refreshToken = generateRefreshToken(user);
 
-      // Send the tokens in the response
       res.status(200).json({ accessToken, refreshToken, role: user.role });
   } catch (err) {
       console.error("Login error:", err);

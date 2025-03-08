@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const NodeSchema = new mongoose.Schema({
-    name: { type: String, required: true }, // 'name' is not unique
+    name: { type: String, required: true }, 
     type: {
         type: String,
         required: true,
@@ -44,11 +44,10 @@ const NodeSchema = new mongoose.Schema({
     }
 });
 
-// Pre-save middleware to update timestamp and generate _id if not provided
 NodeSchema.pre('save', function(next) {
     this.updatedAt = Date.now();
     if (!this._id) {
-        this._id = new mongoose.Types.ObjectId(); // Generate ObjectId
+        this._id = new mongoose.Types.ObjectId(); 
     }
     next();
 });
